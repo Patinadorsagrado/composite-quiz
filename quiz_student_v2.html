@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Composite Materials – Micromechanics II | Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f1a; --surface: #131928; --card: #1a2235; --border: #2a3554;
+    --accent: #00e5ff; --accent2: #7c4dff; --gold: #ffd740; --green: #00e676;
+    --red: #ff1744; --text: #e8eaf6; --muted: #8892b0; --radius: 16px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+
+  #lobby { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; position:relative; z-index:1; }
+  .logo-ring { width:120px; height:120px; border-radius:50%; border:3px solid var(--accent); display:flex; align-items:center; justify-content:center; margin-bottom:2rem; position:relative; animation:spinRing 8s linear infinite; box-shadow:0 0 40px rgba(0,229,255,0.3); }
+  .logo-ring::before { content:''; position:absolute; width:100px; height:100px; border-radius:50%; border:2px dashed var(--accent2); animation:spinRing 4s linear infinite reverse; }
+  .logo-ring span { font-size:2.5rem; }
+  @keyframes spinRing { to { transform:rotate(360deg); } }
+
+  h1.main-title { font-size:clamp(1.8rem,5vw,3rem); font-weight:800; text-align:center; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:0.5rem; line-height:1.1; }
+  .subtitle { color:var(--muted); font-family:'Space Mono',monospace; font-size:0.85rem; letter-spacing:0.1em; text-align:center; margin-bottom:3rem; }
+
+  .input-group { display:flex; flex-direction:column; gap:1rem; width:100%; max-width:400px; margin-bottom:2rem; }
+  .input-group label { font-size:0.75rem; letter-spacing:0.15em; color:var(--muted); text-transform:uppercase; font-family:'Space Mono',monospace; }
+  .input-group input { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius); padding:1rem 1.5rem; color:var(--text); font-size:1.1rem; font-family:'Syne',sans-serif; outline:none; transition:border-color 0.2s,box-shadow 0.2s; width:100%; }
+  .input-group input:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,229,255,0.1); }
+
+  .btn-primary { background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:var(--radius); padding:1rem 3rem; color:#0b0f1a; font-size:1.1rem; font-weight:800; font-family:'Syne',sans-serif; cursor:pointer; transition:transform 0.15s,box-shadow 0.15s; letter-spacing:0.05em; width:100%; max-width:400px; }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,229,255,0.3); }
+  .btn-primary:active { transform:translateY(0); }
+
+  .connection-status { margin-top:1.5rem; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted); display:flex; align-items:center; gap:0.5rem; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); animation:pulse 2s ease-in-out infinite; }
+  .dot.connected { background:var(--green); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  #quiz-screen { display:none; min-height:100vh; position:relative; z-index:1; }
+  .quiz-header { background:var(--surface); border-bottom:1px solid var(--border); padding:1rem 2rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+  .player-badge { background:linear-gradient(135deg,var(--accent2),var(--accent)); padding:0.4rem 1.2rem; border-radius:30px; font-size:0.9rem; font-weight:700; color:#0b0f1a; }
+  .score-display { display:flex; align-items:center; gap:0.5rem; font-family:'Space Mono',monospace; }
+  .score-display .label { color:var(--muted); font-size:0.75rem; }
+  .score-display .value { font-size:1.4rem; font-weight:700; color:var(--gold); }
+  .q-counter { font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted); }
+
+  #waiting-state { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 70px); padding:2rem; text-align:center; }
+  .waiting-animation { width:100px; height:100px; border-radius:50%; border:4px solid var(--border); border-top-color:var(--accent); animation:spin 1s linear infinite; margin-bottom:2rem; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .waiting-text { font-size:1.3rem; font-weight:600; margin-bottom:0.5rem; }
+  .waiting-sub { font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted); }
+
+  #question-state { display:none; padding:2rem; max-width:900px; margin:0 auto; }
+  .question-meta { display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; }
+  .q-number { background:var(--accent2); color:white; font-family:'Space Mono',monospace; font-size:0.75rem; padding:0.3rem 0.8rem; border-radius:20px; font-weight:700; }
+  .q-topic { font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; letter-spacing:0.1em; text-transform:uppercase; }
+  .timer-bar-wrap { flex:1; background:var(--border); height:6px; border-radius:3px; overflow:hidden; }
+  .timer-bar { height:100%; background:linear-gradient(90deg,var(--green),var(--accent)); border-radius:3px; transition:width 1s linear,background 0.5s; }
+  .timer-bar.warning { background:linear-gradient(90deg,var(--red),#ff6d00); }
+  .timer-num { font-family:'Space Mono',monospace; font-size:1.2rem; font-weight:700; color:var(--accent); min-width:2.5rem; text-align:right; }
+  .timer-num.warning { color:var(--red); }
+
+  .question-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; margin-bottom:1.5rem; }
+  .question-text { font-size:1.3rem; font-weight:600; line-height:1.5; }
+
+  .options-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  @media(max-width:600px) { .options-grid { grid-template-columns:1fr; } }
+
+  .option-btn { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius); padding:1.2rem 1.5rem; color:var(--text); font-size:1rem; font-family:'Syne',sans-serif; font-weight:600; cursor:pointer; transition:all 0.2s; text-align:left; display:flex; align-items:flex-start; gap:1rem; line-height:1.4; }
+  .option-letter { background:var(--border); color:var(--muted); border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-size:0.85rem; font-weight:700; flex-shrink:0; transition:all 0.2s; }
+  .option-btn:hover:not(:disabled) { border-color:var(--accent); background:rgba(0,229,255,0.05); transform:translateY(-2px); }
+  .option-btn:hover:not(:disabled) .option-letter { background:var(--accent); color:#0b0f1a; }
+  .option-btn.selected { border-color:var(--accent2); background:rgba(124,77,255,0.15); }
+  .option-btn.selected .option-letter { background:var(--accent2); color:white; }
+  .option-btn.correct { border-color:var(--green); background:rgba(0,230,118,0.15); animation:correctPop 0.4s ease; }
+  .option-btn.correct .option-letter { background:var(--green); color:#0b0f1a; }
+  .option-btn.wrong { border-color:var(--red); background:rgba(255,23,68,0.15); animation:wrongShake 0.4s ease; }
+  .option-btn.wrong .option-letter { background:var(--red); color:white; }
+  @keyframes correctPop { 0%{transform:scale(1)} 50%{transform:scale(1.03)} 100%{transform:scale(1)} }
+  @keyframes wrongShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+  #reveal-state { display:none; padding:2rem; max-width:900px; margin:0 auto; text-align:center; }
+  .result-icon { font-size:4rem; margin-bottom:1rem; animation:bounceIn 0.5s ease; }
+  @keyframes bounceIn { 0%{transform:scale(0.3);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+  .result-label { font-size:2rem; font-weight:800; margin-bottom:0.5rem; }
+  .result-label.correct-lbl { color:var(--green); }
+  .result-label.wrong-lbl { color:var(--red); }
+  .points-earned { font-family:'Space Mono',monospace; font-size:1.1rem; color:var(--gold); margin-bottom:2rem; }
+  .explanation-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; text-align:left; margin-bottom:1.5rem; }
+  .explanation-card .label { font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent); font-family:'Space Mono',monospace; margin-bottom:0.5rem; }
+  .explanation-card p { color:var(--text); line-height:1.7; font-size:0.95rem; }
+  .correct-answer-display { background:rgba(0,230,118,0.1); border:1px solid var(--green); border-radius:var(--radius); padding:1rem 1.5rem; font-weight:700; color:var(--green); margin-bottom:2rem; font-size:1rem; }
+  .next-hint { font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted); animation:blink 1.2s step-end infinite; }
+  @keyframes blink { 50%{opacity:0} }
+
+  #leaderboard-state { display:none; padding:2rem; max-width:700px; margin:0 auto; }
+  .lb-title { text-align:center; font-size:1.8rem; font-weight:800; margin-bottom:2rem; background:linear-gradient(135deg,var(--gold),#ff6d00); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .lb-row { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.5rem; display:flex; align-items:center; gap:1rem; margin-bottom:0.75rem; animation:slideIn 0.3s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+  .lb-rank { font-family:'Space Mono',monospace; font-size:1.2rem; font-weight:700; min-width:2rem; text-align:center; }
+  .lb-rank.gold { color:var(--gold); }
+  .lb-rank.silver { color:#b0bec5; }
+  .lb-rank.bronze { color:#ff8f00; }
+  .lb-name { flex:1; font-weight:600; font-size:1.1rem; }
+  .lb-score { font-family:'Space Mono',monospace; font-size:1.2rem; font-weight:700; color:var(--gold); }
+  .lb-me { border-color:var(--accent); background:rgba(0,229,255,0.05); }
+
+  #final-screen { display:none; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 70px); padding:2rem; text-align:center; position:relative; z-index:1; }
+  .final-trophy { font-size:5rem; margin-bottom:1rem; animation:bounceIn 0.6s ease; }
+  .final-title { font-size:2.5rem; font-weight:800; background:linear-gradient(135deg,var(--gold),var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:1rem; }
+  .final-score-big { font-family:'Space Mono',monospace; font-size:4rem; font-weight:700; color:var(--gold); margin-bottom:0.5rem; }
+  .final-sub { color:var(--muted); font-size:1rem; margin-bottom:2rem; }
+  .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; width:100%; max-width:500px; margin-bottom:2rem; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; }
+  .stat-card .sv { font-size:1.8rem; font-weight:800; font-family:'Space Mono',monospace; }
+  .stat-card .sl { font-size:0.75rem; color:var(--muted); margin-top:0.3rem; font-family:'Space Mono',monospace; }
+  .stat-card.green .sv { color:var(--green); }
+  .stat-card.red .sv { color:var(--red); }
+  .stat-card.gold .sv { color:var(--gold); }
+
+  .confetti { position:fixed; width:10px; height:10px; pointer-events:none; animation:fall linear forwards; z-index:999; border-radius:2px; }
+  @keyframes fall { 0%{transform:translateY(-10px) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+</style>
+</head>
+<body>
+
+<div id="lobby">
+  <div class="logo-ring"><span>🧵</span></div>
+  <h1 class="main-title">Composite Materials<br>Micromechanics II</h1>
+  <p class="subtitle">UNIMORE · Dr. Dino Boccaccini · 50-Question Live Quiz</p>
+  <div class="input-group">
+    <label>Your Name</label>
+    <input type="text" id="player-name" placeholder="e.g. Maria Rossi" maxlength="24" autocomplete="off"/>
+    <label>Session Code</label>
+    <input type="text" id="session-code" placeholder="e.g. CM2026" maxlength="10" style="text-transform:uppercase" autocomplete="off"/>
+  </div>
+  <button class="btn-primary" onclick="joinQuiz()">Join Quiz →</button>
+  <div class="connection-status">
+    <div class="dot" id="dot"></div>
+    <span id="conn-text">Enter your name and session code</span>
+  </div>
+</div>
+
+<div id="quiz-screen">
+  <div class="quiz-header">
+    <div class="player-badge" id="header-name">—</div>
+    <div class="q-counter" id="header-q">Q 0 / 50</div>
+    <div class="score-display">
+      <span class="label">PTS</span>
+      <span class="value" id="header-score">0</span>
+    </div>
+  </div>
+  <div id="waiting-state">
+    <div class="waiting-animation"></div>
+    <p class="waiting-text">Waiting for the instructor…</p>
+    <p class="waiting-sub">The next question will appear here automatically</p>
+  </div>
+  <div id="question-state">
+    <div class="question-meta">
+      <span class="q-number" id="q-number">Q 1</span>
+      <span class="q-topic" id="q-topic">Topic</span>
+      <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+      <span class="timer-num" id="timer-num">30</span>
+    </div>
+    <div class="question-card"><p class="question-text" id="question-text"></p></div>
+    <div class="options-grid" id="options-grid"></div>
+  </div>
+  <div id="reveal-state">
+    <div class="result-icon" id="result-icon">✅</div>
+    <div class="result-label" id="result-label">Correct!</div>
+    <div class="points-earned" id="points-earned">+1000 pts</div>
+    <div class="correct-answer-display" id="correct-answer-display"></div>
+    <div class="explanation-card"><p class="label">Explanation</p><p id="explanation-text"></p></div>
+    <p class="next-hint">▶ waiting for next question…</p>
+  </div>
+  <div id="leaderboard-state">
+    <h2 class="lb-title">🏆 Leaderboard</h2>
+    <div id="lb-rows"></div>
+  </div>
+  <div id="final-screen">
+    <div class="final-trophy">🏆</div>
+    <h2 class="final-title">Quiz Complete!</h2>
+    <div class="final-score-big" id="final-score-num">0</div>
+    <p class="final-sub" id="final-rank-text">You ranked #—</p>
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="sv" id="stat-correct">0</div><div class="sl">Correct</div></div>
+      <div class="stat-card red"><div class="sv" id="stat-wrong">0</div><div class="sl">Wrong</div></div>
+      <div class="stat-card gold"><div class="sv" id="stat-pct">0%</div><div class="sl">Accuracy</div></div>
+    </div>
+    <button class="btn-primary" style="max-width:300px" onclick="shareWhatsApp()">📱 Share on WhatsApp</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBbxxD-j5rdDIlcwWDHybWXtSAT7HqzLwQ",
+  authDomain: "composite-quiz.firebaseapp.com",
+  databaseURL: "https://composite-quiz-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "composite-quiz",
+  storageBucket: "composite-quiz.firebasestorage.app",
+  messagingSenderId: "1020842350176",
+  appId: "1:1020842350176:web:859a2732da8913fac45505"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const ALL_QUESTIONS = [
+  {topic:"Thermal Expansion",q:"How is the coefficient of thermal expansion α defined?",opts:["The stress induced by temperature change","The strain ε caused by a temperature change ΔT","The heat capacity per unit volume","The ratio of elastic modulus to temperature"],ans:1,exp:"α is defined as the deformation (strain) ε that a body undergoes as a result of a temperature change ΔT. Units: 1/°C or 1/K."},
+  {topic:"Thermal Expansion",q:"Why can temperature changes generate internal stresses in a composite ply even without external constraints?",opts:["Because all plies have the same CTE","Because fiber and matrix have different coefficients of thermal expansion","Because composites are always anisotropic in stiffness only","Because the matrix has zero CTE"],ans:1,exp:"The difference in CTE between fiber and matrix creates internal stresses during temperature changes, even without external loads."},
+  {topic:"Thermal Expansion",q:"In Schapery's model, the longitudinal CTE α_L depends on:",opts:["Only the fiber and matrix CTEs","Fiber CTE, matrix CTE, longitudinal modulus E_L, and Poisson's ratio ν_LT","Only the fiber volume fraction","The shear modulus G_12 alone"],ans:1,exp:"Schapery's α_L expression includes α_f, α_m, E_L (rule of mixtures), and ν_LT."},
+  {topic:"Thermal Expansion",q:"For V_f > 0.25, the transverse CTE α_T can be:",opts:["Calculated exactly with the rule of mixtures","Approximated by a simplified expression","Set equal to α_L","Ignored in design"],ans:1,exp:"For V_f > 0.25, a simplified approximation is valid for the transverse CTE."},
+  {topic:"Thermal Expansion",q:"For engineering fiber volume fractions, which inequality holds?",opts:["α_L > α_T","α_L = α_T","α_L < α_T","α_T < 0"],ans:2,exp:"Due to anisotropy, α_L is always much smaller than α_T for typical V_f values."},
+  {topic:"Thermal Expansion",q:"To induce compression in a brittle matrix by thermal processing:",opts:["Use α_f < α_m, cool below T_g","Use α_f > α_m, cool below T_g","Heat above T_g with no reinforcement","Use fibers with α_f = α_m"],ans:1,exp:"α_f > α_m means the fiber contracts more on cooling, compressing the matrix."},
+  {topic:"Thermal Expansion",q:"Carbon T300 at V_f = 0.55 has α_1 approximately:",opts:["+5 × 10⁻⁶ K⁻¹","−0.23 × 10⁻⁶ K⁻¹","18.3 × 10⁻⁶ K⁻¹","0 exactly"],ans:1,exp:"From the data table: Carbon T300 at V_f = 0.55 → α_1 ≈ −0.23 × 10⁻⁶ K⁻¹."},
+  {topic:"Thermal Expansion",q:"A negative longitudinal CTE means the composite:",opts:["Contracts perpendicular to fibers on heating","Shortens along fibers on heating","Has zero thermal deformation","Swells transversely on heating"],ans:1,exp:"Negative α_L: the composite contracts along the fiber axis when temperature increases."},
+  {topic:"Thermal Expansion",q:"Which fiber allows tailoring composite CTE to nearly zero longitudinally?",opts:["E-glass","S-glass","Carbon (graphite)","Natural fibers"],ans:2,exp:"Carbon fibers have near-zero or slightly negative axial CTE, enabling near-zero composite CTE."},
+  {topic:"Thermal Expansion",q:"E-glass composite: α_L = 6.74, α_T = 23.7 (× 10⁻⁶ K⁻¹). This illustrates:",opts:["Isotropy","Strong anisotropy in thermal behavior","Matrix has no influence","Fibers control transverse CTE"],ans:1,exp:"The large α_L vs α_T difference reflects the characteristic anisotropy of composites."},
+  {topic:"Thermal & Moisture",q:"The linear expression for total dimensional change includes:",opts:["Mechanical strain only","Mechanical strain + α·ΔT + β·Δm","α·ΔT only","α·ΔT − β·Δm"],ans:1,exp:"ΔL = L₀(ε + αΔT + βΔm) accounts for mechanical, thermal, and hygroscopic effects."},
+  {topic:"Thermal & Moisture",q:"CTE of typical polymer resins is approximately:",opts:["0.1–1 × 10⁻⁶/°C","30–100 × 10⁻⁶/°C","5–10 × 10⁻⁶/°C","200–500 × 10⁻⁶/°C"],ans:1,exp:"Resins: 30–100 × 10⁻⁶/°C; much higher than steel (10–20 × 10⁻⁶/°C)."},
+  {topic:"Thermal & Moisture",q:"Which material primarily absorbs moisture in FRP composites?",opts:["The fibers","The polymer matrix (exception: aramid fibers)","Both equally","Neither"],ans:1,exp:"Moisture is absorbed primarily by the polymer matrix. Aramid fibers are an exception."},
+  {topic:"Thermal & Moisture",q:"The axial CTE of E-glass fiber is approximately:",opts:["−5 × 10⁻⁶/°C","+5 × 10⁻⁶/°C","30 × 10⁻⁶/°C","0"],ans:1,exp:"E-glass has a positive, low CTE ≈ +5 × 10⁻⁶/°C."},
+  {topic:"Thermal & Moisture",q:"The negative axial CTE of carbon fibers enables:",opts:["Only higher tensile strength","Composites with near-zero longitudinal CTE for dimensional stability","Higher moisture absorption","Better interlaminar shear strength"],ans:1,exp:"By tuning V_f, carbon-fiber composites can achieve near-zero longitudinal CTE — critical for space structures."},
+  {topic:"Moisture Absorption",q:"Moisture absorption in polymer composites occurs by:",opts:["Uniform bulk absorption","Instantaneous surface absorption + diffusion through matrix","Only surface adsorption","Purely mechanical pore filling"],ans:1,exp:"Two-stage mechanism: rapid surface absorption followed by Fickian diffusion through the matrix."},
+  {topic:"Moisture Absorption",q:"The equilibrium moisture content C_m depends on:",opts:["Temperature only","Ambient relative humidity (not temperature)","Both temperature and V_f","Lamina thickness"],ans:1,exp:"C_m depends on relative humidity H, not temperature: C_m = a·H^b."},
+  {topic:"Moisture Absorption",q:"For typical carbon/epoxy, the empirical constants in C_m = a·H^b are:",opts:["a=1, b=0.018","a=0.018, b=1","a=0.1, b=0.5","a=0.5, b=0.1"],ans:1,exp:"For carbon/epoxy: a = 0.018, b = 1 → C_m = 0.018·H."},
+  {topic:"Moisture Absorption",q:"Percent moisture content C is defined as:",opts:["(water mass / wet mass)×100","(water mass / dry mass)×100","(water volume / total volume)×100","(water density / matrix density)×100"],ans:1,exp:"C = (mass of water / dry mass) × 100%."},
+  {topic:"Moisture Absorption",q:"Moisture content vs time is governed by:",opts:["C = C_m always","C = C₀ + (C_m − C₀)·G(t)","C = C₀·G(t)","C = G(t)/C_m"],ans:1,exp:"C = C₀ + (C_m − C₀)·G(t), where G is a time-dependent dimensionless diffusion parameter."},
+  {topic:"Moisture Absorption",q:"The parameter G is derived from:",opts:["Newton's law of cooling","Fick's second law of diffusion","Fourier's law","Darcy's law"],ans:1,exp:"G is the analytical solution of Fick's second law for a plate with constant surface concentration."},
+  {topic:"Moisture Absorption",q:"If a lamina (thickness h) is exposed on BOTH sides, S =",opts:["S = 2h","S = h","S = h/2","S = h²"],ans:1,exp:"Both sides exposed → S = h. One side only → S = 2h."},
+  {topic:"Moisture Absorption",q:"For large times, moisture uptake follows:",opts:["A linear increase","An exponential approach to equilibrium","Oscillatory behavior","A step change"],ans:1,exp:"G ≈ 1 − (8/π²)exp(−π²Dt/S²): exponential approach to saturation C_m."},
+  {topic:"Moisture Absorption",q:"Moisture absorption in composites is:",opts:["Irreversible","Reversible — drying returns composite to dry state","Partially reversible (50%)","Reversible only at high temperatures"],ans:1,exp:"Fully reversible: drying continuously reduces moisture back to the original dry state."},
+  {topic:"Moisture Absorption",q:"When D_f << D_m, the longitudinal diffusion coefficient simplifies to:",opts:["D_L ≈ D_f·V_f","D_L ≈ D_m·V_m","D_L ≈ D_m","D_L ≈ D_f"],ans:1,exp:"Since D_f << D_m, D_L ≈ D_m·V_m ≈ D_m (rule of mixtures simplification)."},
+  {topic:"Moisture Absorption",q:"The transverse diffusion coefficient D_T (V_f < 0.78) uses:",opts:["Rule of mixtures","Halpin-Tsai equation","Simple averaging of D_f and D_m","Only D_m"],ans:1,exp:"D_T is evaluated using the Halpin-Tsai equation, analogous to transverse modulus."},
+  {topic:"Transport Properties",q:"Longitudinal transport coefficient K is computed by:",opts:["Halpin-Tsai equation","Rule of mixtures","Nielsen equation","Rosen model"],ans:1,exp:"K_L = K_f·V_f + K_m·V_m (rule of mixtures) — parallel paths along fibers."},
+  {topic:"Transport Properties",q:"For circular fibers (a/b=1), the Halpin-Tsai parameter ξ =",opts:["0","2","1","π"],ans:2,exp:"For circular fibers, a/b = 1 → ξ = 1 in the Halpin-Tsai equation."},
+  {topic:"Transport Properties",q:"Transverse thermal conductivity increases more slowly with V_f because:",opts:["Fibers are insulators transversely","Heat must pass through matrix and around fibers","Halpin-Tsai always gives lower values","Matrix conductivity is higher"],ans:1,exp:"Transverse heat flow crosses matrix-fiber interfaces repeatedly, creating thermal resistance."},
+  {topic:"Transport Properties",q:"HMS carbon fibers have higher conductivity than HTS because:",opts:["HMS has more defects","HMS has a more ordered graphitic structure","HTS fibers are larger","HMS has lower density"],ans:1,exp:"HMS = more ordered graphite → higher stiffness and thermal conductivity."},
+  {topic:"Transport Properties",q:"Thermal conductivity, electrical conductivity, and mass diffusivity share:",opts:["Completely different equations","Same math: rule of mixtures (longitudinal), Halpin-Tsai (transverse)","Rule of mixtures only","FEA exclusively"],ans:1,exp:"All three transport properties follow identical equations."},
+  {topic:"Longitudinal Strength",q:"In the simplest tensile strength model, fibers are assumed to have:",opts:["Weibull-distributed strength","Uniform (identical) strength σ_fb","Zero stiffness","Same CTE as matrix"],ans:1,exp:"First approximation: all fibers identical strength σ_fb. Reality: Weibull distribution."},
+  {topic:"Longitudinal Strength",q:"Composite failure in longitudinal tension occurs when:",opts:["Matrix reaches tensile strength","Fiber stress reaches σ_fb","Shear stress exceeds G_12","Axial strain reaches 1%"],ans:1,exp:"Failure occurs at fiber fracture strain ε_fb when fiber stress = σ_fb."},
+  {topic:"Longitudinal Strength",q:"Rule of mixtures for longitudinal tensile strength σ_Lb:",opts:["σ_Lb = σ_fb·V_f","σ_Lb = σ_fb·V_f + (σ_m at ε_fb)·V_m","σ_Lb = σ_mb·V_m","σ_Lb = (σ_fb+σ_mb)/2"],ans:1,exp:"σ_Lb = σ_fb·V_f + σ_m|ε_fb·V_m — matrix contribution at the fiber failure strain."},
+  {topic:"Longitudinal Strength",q:"V_min is the V_f below which:",opts:["Manufacturing is infeasible","The matrix can carry full load after fiber failure","Composite modulus equals matrix modulus","Kink bands form"],ans:1,exp:"Below V_min, the matrix alone can still bear the load after fibers fail."},
+  {topic:"Longitudinal Strength",q:"V_crit is found by setting:",opts:["σ_Lu = σ_fb","σ_Lu = σ_mu","G_12 = G_m","ε_T = ε_Tb"],ans:1,exp:"V_crit is where σ_Lu = σ_mu. Only for V_f > V_crit does reinforcement improve strength."},
+  {topic:"Longitudinal Strength",q:"In Weibull fiber strength distribution, m represents:",opts:["Average fiber strength","Scatter (dispersion) of fiber strength","Minimum fiber strength","Maximum fiber strength"],ans:1,exp:"σ₀ = characteristic strength; m = Weibull modulus = measure of scatter."},
+  {topic:"Longitudinal Strength",q:"For V_f < V_min, adding fibers to epoxy-glass:",opts:["Increases strength linearly","Keeps strength constant","Reduces strength below neat matrix","Doubles strength"],ans:2,exp:"At very low V_f, fibers fracture early and the reduced matrix cross-section cannot support the load."},
+  {topic:"Longitudinal Strength",q:"Practical engineering composites are designed with:",opts:["V_f < V_min","V_f > V_crit","V_f = V_min exactly","V_f < 0.1"],ans:1,exp:"V_f > V_crit ensures genuine strength improvement. Typical: V_f = 0.45–0.65."},
+  {topic:"Compressive Strength",q:"Longitudinal compressive strength vs tensile strength is typically:",opts:["Equal or higher","About one-half or less","Twice as high","The same for all fiber types"],ans:1,exp:"Compressive strength ≈ half (or less) of tensile strength due to microbuckling."},
+  {topic:"Compressive Strength",q:"Primary failure mode in longitudinal compression:",opts:["Fiber tensile fracture","Fiber microbuckling within the matrix","Matrix cracking perpendicular to fibers","Delamination"],ans:1,exp:"Failure initiates with fiber microbuckling, leading to kink band formation."},
+  {topic:"Compressive Strength",q:"Fiber misalignment angle α describes:",opts:["Angle between fiber and loading direction","Deviation of a fiber from nominal alignment","Cutting angle Φ","Kink band angle"],ans:1,exp:"α = physical deviation of a fiber from its intended direction."},
+  {topic:"Compressive Strength",q:"In extensional microbuckling mode, the matrix:",opts:["Deforms in shear","Deforms mainly by normal stretching","Remains undeformed","Cracks transversely"],ans:1,exp:"Extensional mode: fibers buckle while matrix stretches locally. Occurs at V_f < 0.2."},
+  {topic:"Compressive Strength",q:"Shear mode microbuckling leads to:",opts:["Matrix deformation in pure tension","Kink band formation through matrix shear deformation","Fiber tensile fracture","Delamination"],ans:1,exp:"In shear mode, matrix deforms in shear → fibers rotate collectively → kink band."},
+  {topic:"Compressive Strength",q:"Shear microbuckling dominates at:",opts:["V_f < 0.2","V_f > 0.2 (higher fractions)","V_f = 0.5 only","All V_f independently"],ans:1,exp:"Shear mode is dominant for V_f > 0.2 (engineering composites)."},
+  {topic:"Compressive Strength",q:"Rosen equation for shear mode compressive strength:",opts:["σ'_Lb = G_12/(1−V_f)","σ'_Lb ≈ G_m/(1−V_f)","σ'_Lb = σ_fb·V_f","σ'_Lb = E_f·V_f·ε_fb"],ans:1,exp:"Rosen: σ'_Lb ≈ G_m/(1−V_f), linking compressive strength to matrix shear modulus."},
+  {topic:"Compressive Strength",q:"Rosen equation overpredicts by up to 200% because it:",opts:["Uses wrong fiber moduli","Assumes perfect fiber alignment; ignores misalignment","Overestimates matrix modulus","Neglects fiber contribution"],ans:1,exp:"Rosen assumes perfect alignment. Fiber waviness always present → reduces actual strength."},
+  {topic:"Compressive Strength",q:"The empirical correction factor k is:",opts:["Derived analytically","Found from one experimental test at one V_f","Always 0.5","A function of Weibull modulus"],ans:1,exp:"k is determined from a single test at one V_f — an acknowledged imprecise empirical calibration."},
+  {topic:"Compressive Strength",q:"The Nielsen model assumes failure occurs when:",opts:["Maximum longitudinal strain is reached","Maximum transverse strain ε_Tb is reached (Poisson effect)","Shear strain reaches G_12","Interfacial shear reaches bond strength"],ans:1,exp:"Nielsen: failure at transverse failure strain ε_Tb induced by Poisson effect during compression."},
+  {topic:"Compressive Strength",q:"Comparing Rosen and Nielsen models with experiments:",opts:["Both agree well","Rosen overestimates; Nielsen agrees better","Nielsen overestimates; Rosen is accurate","Both underestimate"],ans:1,exp:"Rosen consistently overestimates. Nielsen shows much better agreement with experimental data."},
+  {topic:"Compressive Strength",q:"The major Poisson's ratio ν_LT is defined as:",opts:["Longitudinal stress / transverse stress","−ε_T / ε_L under longitudinal load","E_L / E_T","Shear strain / shear stress"],ans:1,exp:"ν_LT = −ε_T/ε_L: ratio of transverse to longitudinal strain under uniaxial longitudinal loading."}
+];
+
+let playerName = '';
+let sessionCode = '';
+let score = 0;
+let currentQ = -1;
+let answered = false;
+let timerInterval = null;
+let timeLeft = 30;
+let correct = 0;
+let wrong = 0;
+let playerKey = null;
+let sessionRef = null;
+
+window.joinQuiz = function() {
+  const name = document.getElementById('player-name').value.trim();
+  const code = document.getElementById('session-code').value.trim().toUpperCase();
+  if (!name) { alert('Please enter your name!'); return; }
+  if (!code) { alert('Please enter the session code!'); return; }
+  playerName = name;
+  sessionCode = code;
+  sessionRef = ref(db, 'sessions/' + code);
+
+  // Register player
+  const playersRef = ref(db, 'sessions/' + code + '/players');
+  const newPlayerRef = push(playersRef);
+  playerKey = newPlayerRef.key;
+  set(newPlayerRef, { name: playerName, score: 0, joined: serverTimestamp() });
+
+  document.getElementById('dot').classList.add('connected');
+  document.getElementById('conn-text').textContent = 'Connected to session ' + code;
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  document.getElementById('header-name').textContent = name;
+
+  // Listen for instructor commands
+  const stateRef = ref(db, 'sessions/' + code + '/state');
+  onValue(stateRef, (snapshot) => {
+    const state = snapshot.val();
+    if (!state) return;
+    if (state.phase === 'question' && state.qIndex !== currentQ) {
+      loadQuestion(state.qIndex);
+    } else if (state.phase === 'reveal' && currentQ >= 0) {
+      revealAnswer();
+    } else if (state.phase === 'leaderboard') {
+      fetchAndShowLeaderboard();
+    } else if (state.phase === 'waiting') {
+      showState('waiting');
+    } else if (state.phase === 'ended') {
+      fetchAndShowFinal();
+    }
+  });
+};
+
+function loadQuestion(qIndex) {
+  currentQ = qIndex;
+  answered = false;
+  const q = ALL_QUESTIONS[qIndex];
+  document.getElementById('q-number').textContent = 'Q ' + (qIndex + 1);
+  document.getElementById('q-topic').textContent = q.topic;
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('header-q').textContent = 'Q ' + (qIndex + 1) + ' / ' + ALL_QUESTIONS.length;
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  ['A','B','C','D'].forEach((letter, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = '<span class="option-letter">' + letter + '</span><span>' + q.opts[i] + '</span>';
+    btn.onclick = () => selectAnswer(i, btn);
+    grid.appendChild(btn);
+  });
+
+  clearInterval(timerInterval);
+  timeLeft = 30;
+  updateTimer();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) { clearInterval(timerInterval); if (!answered) lockAnswers(); }
+  }, 1000);
+  showState('question');
+}
+
+function updateTimer() {
+  const bar = document.getElementById('timer-bar');
+  const num = document.getElementById('timer-num');
+  bar.style.width = (timeLeft / 30 * 100) + '%';
+  num.textContent = timeLeft;
+  if (timeLeft <= 10) { bar.classList.add('warning'); num.classList.add('warning'); }
+  else { bar.classList.remove('warning'); num.classList.remove('warning'); }
+}
+
+function selectAnswer(idx, btn) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+  lockAnswers(idx);
+  // Save answer to Firebase
+  if (playerKey) {
+    set(ref(db, 'sessions/' + sessionCode + '/answers/' + currentQ + '/' + playerKey), {
+      answer: idx, timeLeft: timeLeft, name: playerName
+    });
+  }
+}
+
+function lockAnswers(selectedIdx) {
+  document.querySelectorAll('.option-btn').forEach((b, i) => {
+    b.disabled = true;
+    if (i === selectedIdx) b.classList.add('selected');
+  });
+}
+
+function revealAnswer() {
+  if (document.getElementById('reveal-state').style.display === 'block') return;
+  clearInterval(timerInterval);
+  const q = ALL_QUESTIONS[currentQ];
+  const letters = ['A','B','C','D'];
+  let isCorrect = false;
+  document.querySelectorAll('.option-btn').forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.ans) b.classList.add('correct');
+    if (b.classList.contains('selected') && i !== q.ans) b.classList.add('wrong');
+    if (b.classList.contains('selected') && i === q.ans) isCorrect = true;
+  });
+  let pts = 0;
+  if (isCorrect) {
+    pts = 500 + Math.round((timeLeft / 30) * 500);
+    score += pts; correct++;
+    document.getElementById('header-score').textContent = score;
+    document.getElementById('result-icon').textContent = '✅';
+    document.getElementById('result-label').textContent = 'Correct!';
+    document.getElementById('result-label').className = 'result-label correct-lbl';
+    document.getElementById('points-earned').textContent = '+' + pts + ' pts';
+    // Update score in Firebase
+    if (playerKey) set(ref(db, 'sessions/' + sessionCode + '/players/' + playerKey + '/score'), score);
+  } else {
+    wrong++;
+    document.getElementById('result-icon').textContent = '❌';
+    document.getElementById('result-label').textContent = answered ? 'Wrong answer' : "Time's up!";
+    document.getElementById('result-label').className = 'result-label wrong-lbl';
+    document.getElementById('points-earned').textContent = '+0 pts';
+  }
+  document.getElementById('correct-answer-display').textContent = '✔ Correct answer: ' + letters[q.ans] + '. ' + q.opts[q.ans];
+  document.getElementById('explanation-text').textContent = q.exp;
+  showState('reveal');
+}
+
+function fetchAndShowLeaderboard() {
+  onValue(ref(db, 'sessions/' + sessionCode + '/players'), (snap) => {
+    const players = snap.val() || {};
+    const lb = Object.values(players).sort((a,b) => b.score - a.score);
+    const container = document.getElementById('lb-rows');
+    container.innerHTML = '';
+    const medals = ['🥇','🥈','🥉'];
+    lb.slice(0,10).forEach((row, i) => {
+      const div = document.createElement('div');
+      div.className = 'lb-row' + (row.name === playerName ? ' lb-me' : '');
+      const rankClass = i < 3 ? ['gold','silver','bronze'][i] : '';
+      div.innerHTML = '<span class="lb-rank ' + rankClass + '">' + (medals[i] || (i+1)) + '</span><span class="lb-name">' + row.name + (row.name === playerName ? ' (you)' : '') + '</span><span class="lb-score">' + row.score + ' pts</span>';
+      container.appendChild(div);
+    });
+    showState('leaderboard');
+  }, { onlyOnce: true });
+}
+
+function fetchAndShowFinal() {
+  onValue(ref(db, 'sessions/' + sessionCode + '/players'), (snap) => {
+    const players = snap.val() || {};
+    const lb = Object.values(players).sort((a,b) => b.score - a.score);
+    const rank = lb.findIndex(p => p.name === playerName) + 1;
+    document.getElementById('final-score-num').textContent = score + ' pts';
+    document.getElementById('stat-correct').textContent = correct;
+    document.getElementById('stat-wrong').textContent = wrong;
+    const total = correct + wrong;
+    document.getElementById('stat-pct').textContent = total > 0 ? Math.round(correct/total*100) + '%' : '—';
+    document.getElementById('final-rank-text').textContent = 'You ranked #' + rank + ' of ' + lb.length;
+    showState('final');
+    launchConfetti();
+  }, { onlyOnce: true });
+}
+
+window.shareWhatsApp = function() {
+  const text = encodeURIComponent('🧵 Composite Materials Quiz\n👤 ' + playerName + '\n🏆 Score: ' + score + ' pts\n✅ Correct: ' + correct + '/' + (correct+wrong) + '\n📊 Accuracy: ' + (correct+wrong>0?Math.round(correct/(correct+wrong)*100):0) + '%\n\nMicromechanics II – UNIMORE');
+  window.open('https://wa.me/?text=' + text, '_blank');
+};
+
+function showState(state) {
+  document.getElementById('waiting-state').style.display = state === 'waiting' ? 'flex' : 'none';
+  document.getElementById('question-state').style.display = state === 'question' ? 'block' : 'none';
+  document.getElementById('reveal-state').style.display = state === 'reveal' ? 'block' : 'none';
+  document.getElementById('leaderboard-state').style.display = state === 'leaderboard' ? 'block' : 'none';
+  document.getElementById('final-screen').style.display = state === 'final' ? 'flex' : 'none';
+}
+
+function launchConfetti() {
+  const colors = ['#00e5ff','#7c4dff','#ffd740','#00e676','#ff1744','#ff6d00'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      el.style.cssText = 'left:' + Math.random()*100 + 'vw;top:-10px;background:' + colors[Math.floor(Math.random()*colors.length)] + ';width:' + (6+Math.random()*10) + 'px;height:' + (6+Math.random()*10) + 'px;animation-duration:' + (2+Math.random()*3) + 's;animation-delay:' + Math.random()*2 + 's;border-radius:' + (Math.random()>0.5?'50%':'2px') + ';';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 6000);
+    }, i * 50);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('lobby').style.display !== 'none') window.joinQuiz();
+});
+</script>
+</body>
+</html>
